@@ -42,7 +42,9 @@ SET(PLUME_SOURCE_FILES
     src/plume/drivers/inmemory.c
     src/plume/context.c
     src/plume/driver.c
-    src/plume/status.c)
+    src/plume/status.c
+    src/plume/header.c
+    src/plume/writer.c)
 
 add_library(plume STATIC ${PLUME_SOURCE_FILES})
 target_link_libraries(plume PRIVATE gcov)

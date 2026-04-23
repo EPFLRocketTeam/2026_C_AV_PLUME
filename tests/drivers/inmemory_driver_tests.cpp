@@ -126,7 +126,22 @@ TEST(InMemoryDriverTests, inmemory_test_disk_info) {
 }
 TEST(InMemoryDriverTests, inmemory_ready) {
     struct plume_driver driver = plume_allocate_inmemory_driver (1024, 64);
-    EXPECT_EQ(driver.write_block_ready(&driver, NULL), 1);
+    struct plume_inmemory_driver* inmem_driver = 
+        (struct plume_inmemory_driver*) driver.driver_ptr;
+    EXPECT_EQ(inmem_driver->mock_ready, (void*) NULL);
+    EXPECT_EQ(inmem_driver->mock_ready_size, 0);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 1);
+
+    uint8_t order[5] = { 1, 0, 1, 0, 0 };
+    inmem_driver->mock_ready = order;
+    inmem_driver->mock_ready_size = 5;
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 1);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 0);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 1);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 0);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 0);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 1);
+    EXPECT_EQ(driver.write_block_ready(driver.driver_ptr, NULL), 1);
     plume_free_inmemory_driver(&driver);
 }
 

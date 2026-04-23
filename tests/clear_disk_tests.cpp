@@ -31,6 +31,10 @@ TEST(ClearDiskTests, test_plume_clear_disk) {
         EXPECT_EQ(((plume_inmemory_driver*) driver.driver_ptr)->buffer[i], 0);
     }
 
+    EXPECT_EQ(context.fat_size, 16);
+    EXPECT_EQ(context.next_file_block, 1);
+    EXPECT_EQ(context.next_valid_block, 16);
+
     EXPECT_EQ(((plume_inmemory_driver*) driver.driver_ptr)->buffer[0], PLUME_PAGE_SETTINGS);
     EXPECT_EQ(((plume_inmemory_driver*) driver.driver_ptr)->buffer[1], 16);
     EXPECT_EQ(((plume_inmemory_driver*) driver.driver_ptr)->buffer[2], 0);

@@ -34,6 +34,14 @@ uint8_t inmemory_write_block_ready (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context
 ) {
+    if (driver_ptr->mock_ready_size) {
+        uint8_t mock_status = *driver_ptr->mock_ready;
+        
+        driver_ptr->mock_ready_size --;
+        driver_ptr->mock_ready ++;
+
+        return mock_status;
+    }
     return 1;
 }
 uint8_t inmemory_write_block (
@@ -117,6 +125,8 @@ struct plume_driver plume_allocate_inmemory_driver ( uint64_t block_count, uint6
     
     inmem_driver->mock_buffers      = NULL;
     inmem_driver->mock_buffers_size = 0;
+    inmem_driver->mock_ready      = NULL;
+    inmem_driver->mock_ready_size = 0;
 
     for (uint64_t offset = 0; offset < block_count * block_size; offset ++) {
         inmem_driver->buffer[offset] = 0;

@@ -14,6 +14,9 @@ struct plume_inmemory_driver {
 
     uint8_t* mock_buffers;
     uint64_t mock_buffers_size;
+    
+    uint8_t* mock_ready;
+    uint64_t mock_ready_size;
 };
 
 struct plume_driver plume_allocate_inmemory_driver ( uint64_t block_count, uint64_t block_size );

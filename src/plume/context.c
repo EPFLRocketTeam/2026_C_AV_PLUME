@@ -2,9 +2,22 @@
 #include <stddef.h>
 #include "plume/context.h"
 #include "plume/status.h"
+#include "plume/header.h"
 #include "plume/const.h"
 
-uint8_t read_page_settings (struct plume_context* context) {
+void plume_prepare_context (struct plume_context* context) {
+    context->rb_lft_block = 0;
+    context->rb_rgt_block = 0;
+    context->rb_rgt_offset = sizeof(struct plume_header);
+    context->rb_number_blocks = context->arena_length / context->disk_info.block_size;
+    context->rb_number_bytes_total = context->rb_number_blocks * (context->disk_info.block_size - sizeof(struct plume_header));
+    context->rb_max_nb_bytes_per_write = (context->rb_number_blocks - 1) * (context->disk_info.block_size - sizeof(struct plume_header));
+    context->rb_number_bytes_used = 0;
+    context->rb_number_blocks_used = 0;
+    context->rb_pending_write = 0;
+}
+
+uint8_t plume_read_page_settings (struct plume_context* context) {
     uint8_t error = context->driver->read_block(context->driver->driver_ptr, context, context->arena_buffer, 0);
     if (error != PLUME_OK) {
         return error;
@@ -18,7 +31,7 @@ uint8_t read_page_settings (struct plume_context* context) {
 
     return PLUME_OK;
 }
-uint8_t is_page_empty (struct plume_context* context, uint8_t* result, uint64_t block_id) {
+uint8_t plume_is_page_empty (struct plume_context* context, uint8_t* result, uint64_t block_id) {
     uint8_t error = context->driver->read_block(context->driver->driver_ptr, context, context->arena_buffer, block_id);
     if (error != PLUME_OK) {
         return error;
@@ -27,7 +40,7 @@ uint8_t is_page_empty (struct plume_context* context, uint8_t* result, uint64_t 
     *result = (*context->arena_buffer) == PLUME_PAGE_EMPTY0 || (*context->arena_buffer) == PLUME_PAGE_EMPTY1;
     return PLUME_OK;
 }
-uint8_t find_first_empty_page (
+uint8_t plume_find_first_empty_page (
     struct plume_context* context,
     uint64_t* result, uint64_t start_block, uint64_t end_block
 ) {
@@ -38,7 +51,7 @@ uint8_t find_first_empty_page (
         uint64_t middle_block = (start_block + end_block) >> 1;
 
         uint8_t is_of_kind, error;
-        error = is_page_empty(context, &is_of_kind, middle_block);
+        error = plume_is_page_empty(context, &is_of_kind, middle_block);
         if (error != PLUME_OK) {
             return error;
         }
@@ -70,12 +83,12 @@ uint8_t plume_init (struct plume_context* context, struct plume_driver* driver) 
         return PLUME_EARENA_TOO_SMALL;
     }
 
-    error = read_page_settings(context);
+    error = plume_read_page_settings(context);
     if (error != PLUME_OK) {
         return error;
     }
     
-    error = find_first_empty_page(
+    error = plume_find_first_empty_page(
         context,
         &context->next_file_block,
         1, context->fat_size - 1
@@ -84,7 +97,7 @@ uint8_t plume_init (struct plume_context* context, struct plume_driver* driver) 
         return error;
     }
     
-    error = find_first_empty_page(
+    error = plume_find_first_empty_page(
         context,
         &context->next_valid_block,
         context->fat_size,
@@ -94,6 +107,7 @@ uint8_t plume_init (struct plume_context* context, struct plume_driver* driver) 
         return error;
     }
     
+    plume_prepare_context(context);
     return PLUME_OK;
 }
 
@@ -144,9 +158,10 @@ uint8_t plume_clear_disk (
     }
     
     context->fat_size = fat_size;
-    context->next_file_block = 0;
+    context->next_file_block = 1;
     context->next_valid_block = fat_size;
 
+    plume_prepare_context(context);
     return PLUME_OK;
 }
 
