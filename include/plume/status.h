@@ -18,6 +18,11 @@
 #define PLUME_EDISK_FULL ((uint8_t) -8)
 #define PLUME_EWRONG_PAGE_KIND ((uint8_t) -9)
 #define PLUME_EWRONG_CRC ((uint8_t) -10)
+#define PLUME_EBAD_UNIX_OPEN ((uint8_t) -11)
+#define PLUME_EBAD_UNIX_DISKLEN ((uint8_t) -12)
+#define PLUME_EBAD_UNIX_DISKBSS ((uint8_t) -13)
+#define PLUME_EBAD_UNIX_LSEEK ((uint8_t) -14)
+#define PLUME_EBAD_UNIX_RW ((uint8_t) -15)
 
 uint8_t plume_is_ok (uint8_t status);
 

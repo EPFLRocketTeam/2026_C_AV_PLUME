@@ -40,6 +40,7 @@ endif()
 # Add your source files here
 SET(PLUME_SOURCE_FILES
     src/plume/drivers/inmemory.c
+    src/plume/drivers/unix.c
     src/plume/context.c
     src/plume/driver.c
     src/plume/status.c
@@ -55,6 +56,7 @@ target_include_directories(plume PUBLIC include)
 #############################################################
 
 include(FetchContent)
+find_package(OpenSSL REQUIRED)
 
 FetchContent_Declare(
     googletest
@@ -71,7 +73,7 @@ include(GoogleTest)
 
 function(create_test test_name test_file)
     add_executable(${test_name} ${test_file})
-    target_link_libraries(${test_name} PRIVATE plume GTest::gtest_main GTest::gmock)
+    target_link_libraries(${test_name} PRIVATE plume GTest::gtest_main GTest::gmock OpenSSL::Crypto)
     gtest_discover_tests(${test_name})
 endfunction()
 

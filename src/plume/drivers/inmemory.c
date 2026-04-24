@@ -4,7 +4,7 @@
 #include "plume/status.h"
 #include "plume/drivers/inmemory.h"
 
-uint8_t inmemory_disk_information (struct plume_inmemory_driver* driver_ptr, struct plume_disk* result) {
+uint8_t unix_disk_information (struct plume_inmemory_driver* driver_ptr, struct plume_disk* result) {
     if (driver_ptr == NULL) {
         return PLUME_ENULL;
     }
@@ -30,7 +30,7 @@ uint8_t inmemory_disk_information (struct plume_inmemory_driver* driver_ptr, str
     return mock_status;
 }
 
-uint8_t inmemory_write_block_ready (
+uint8_t unix_write_block_ready (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context
 ) {
@@ -44,7 +44,7 @@ uint8_t inmemory_write_block_ready (
     }
     return 1;
 }
-uint8_t inmemory_write_block (
+uint8_t unix_write_block (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context,
     const uint8_t* buffer, 
@@ -138,16 +138,16 @@ struct plume_driver plume_allocate_inmemory_driver ( uint64_t block_count, uint6
         /* Convert the virtual table to untypped functions */
         .disk_information =
             PLUME_DISK_INFORMATION_FN_TYPE
-            &inmemory_disk_information,
+            &unix_disk_information,
         .read_block =
             PLUME_READ_BLOCK_FN_TYPE
             &inmemory_read_block,
         .write_block =
             PLUME_WRITE_BLOCK_FN_TYPE
-            &inmemory_write_block,
+            &unix_write_block,
         .write_block_ready = 
             PLUME_WRITE_BLOCK_READY_FN_TYPE
-            &inmemory_write_block_ready
+            &unix_write_block_ready
     };
 
     return driver;

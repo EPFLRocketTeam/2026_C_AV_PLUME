@@ -1,1 +1,2 @@
 create_test(inmemory_driver_tests inmemory_driver_tests.cpp)
+create_test(unix_driver_tests unix_driver_tests.cpp)
