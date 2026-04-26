@@ -41,6 +41,12 @@ endif()
 SET(PLUME_SOURCE_FILES
     src/plume/drivers/inmemory.c
     src/plume/drivers/unix.c
+    src/plume/cli/entrypoint.c
+    src/plume/cli/command.c
+    src/plume/cli/reader.c
+    src/plume/cli/clear.c
+    src/plume/cli/cat.c
+    src/plume/cli/ls.c
     src/plume/context.c
     src/plume/driver.c
     src/plume/status.c
@@ -50,6 +56,10 @@ SET(PLUME_SOURCE_FILES
 add_library(plume STATIC ${PLUME_SOURCE_FILES})
 target_link_libraries(plume PRIVATE gcov)
 target_include_directories(plume PUBLIC include)
+
+add_executable(plume_cli src/plume/cli/main.c)
+target_link_libraries(plume_cli PRIVATE plume)
+target_include_directories(plume_cli PUBLIC include)
 
 #############################################################
 ######################## GOOGLE TEST ########################
