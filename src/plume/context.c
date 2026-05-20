@@ -1,5 +1,6 @@
 
 #include <stddef.h>
+#include <string.h>
 #include "plume/context.h"
 #include "plume/status.h"
 #include "plume/header.h"
@@ -27,7 +28,7 @@ uint8_t plume_read_page_settings (struct plume_context* context) {
         return PLUME_EBAD_DISK;
     }
 
-    context->fat_size = *((uint64_t*) (context->arena_buffer + 1));
+    memcpy(&context->fat_size, context->arena_buffer + 1, sizeof(uint64_t));
 
     return PLUME_OK;
 }
@@ -137,8 +138,7 @@ uint8_t plume_clear_disk (
 
     *(context->arena_buffer) = PLUME_PAGE_SETTINGS;
 
-    uint64_t* int_buffer = (uint64_t*) (context->arena_buffer + 1);
-    *int_buffer = fat_size;
+    memcpy(context->arena_buffer + 1, &fat_size, sizeof(uint64_t));
 
     error = plume_write_block_blocking(context, context->arena_buffer, 0);
     if (!plume_is_ok(error)) {

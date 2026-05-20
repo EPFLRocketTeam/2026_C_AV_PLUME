@@ -1,5 +1,6 @@
 
 #include <stddef.h>
+#include <string.h>
 #include "plume/const.h"
 #include "plume/status.h"
 #include "plume/driver.h"
@@ -17,8 +18,7 @@ uint8_t plume_open_write (struct plume_context* context) {
 
     context->arena_buffer[0] = PLUME_PAGE_FILEINFO;
     
-    uint64_t* int_buffer = (uint64_t*) (context->arena_buffer + 1);
-    *int_buffer = context->next_valid_block;
+    memcpy(context->arena_buffer + 1, &context->next_valid_block, sizeof(uint64_t));
 
     uint8_t error = plume_write_block_blocking(context, context->arena_buffer, context->next_file_block);
     if (!plume_is_ok(error)) {
