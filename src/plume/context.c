@@ -15,7 +15,7 @@ void plume_prepare_context (struct plume_context* context) {
     context->rb_max_nb_bytes_per_write = (context->rb_number_blocks - 1) * (context->disk_info.block_size - sizeof(struct plume_header));
     context->rb_number_bytes_used = 0;
     context->rb_number_blocks_used = 0;
-    context->rb_pending_write = 0;
+    context->rb_pending_batch_size = 0;
 }
 
 uint8_t plume_read_page_settings (struct plume_context* context) {

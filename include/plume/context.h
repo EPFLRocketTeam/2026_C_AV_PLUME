@@ -30,7 +30,7 @@ struct plume_context {
     uint64_t rb_lft_block, rb_rgt_block;
     uint64_t rb_rgt_offset;
 
-    uint8_t rb_pending_write;
+    uint8_t rb_pending_batch_size;
     uint8_t is_first_block;
 };
 

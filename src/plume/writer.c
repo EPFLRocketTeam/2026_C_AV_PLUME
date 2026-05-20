@@ -67,16 +67,17 @@ uint8_t plume_tick (struct plume_context* context) {
         return PLUME_ENULL;
     }
 
-    if (context->rb_pending_write) { 
+    if (context->rb_pending_batch_size > 0) { 
         if (context->driver->write_block_ready(context->driver->driver_ptr, context)) {
-            context->rb_pending_write = 0;
-            context->rb_lft_block ++;
-            context->rb_number_blocks_used --;
-            context->rb_number_bytes_used -= context->disk_info.block_size - sizeof(struct plume_header);
-            context->next_valid_block ++;
+            uint8_t batch = context->rb_pending_batch_size;
+            context->rb_pending_batch_size = 0;
+            context->rb_lft_block += batch;
+            context->rb_number_blocks_used -= batch;
+            context->rb_number_bytes_used -= batch * (context->disk_info.block_size - sizeof(struct plume_header));
+            context->next_valid_block += batch;
 
-            if (context->rb_lft_block == context->rb_number_blocks) {
-                context->rb_lft_block = 0;
+            if (context->rb_lft_block >= context->rb_number_blocks) {
+                context->rb_lft_block -= context->rb_number_blocks;
             }
         } else {
             return PLUME_OK;
@@ -91,19 +92,57 @@ uint8_t plume_tick (struct plume_context* context) {
         return PLUME_EDISK_FULL;
     }
 
-    uint8_t* block = context->arena_buffer + (context->rb_lft_block * context->disk_info.block_size);
-    plume_prepare_block(block, context->disk_info.block_size, context->is_first_block);
+    /* Compute how many contiguous blocks we can flush in one transfer. */
+    uint32_t batch_size = context->rb_number_blocks_used;
+
+    /* Cannot write past the ring-buffer wrap boundary (memory contiguity). */
+    uint64_t blocks_until_wrap = context->rb_number_blocks - context->rb_lft_block;
+    if (batch_size > blocks_until_wrap) {
+        batch_size = (uint32_t) blocks_until_wrap;
+    }
+
+    /* Cannot write past the disk end. */
+    uint64_t blocks_until_disk_end = context->disk_info.number_blocks - context->next_valid_block;
+    if (batch_size > blocks_until_disk_end) {
+        batch_size = (uint32_t) blocks_until_disk_end;
+    }
+
+    /* Cap at configured maximum. */
+    if (batch_size > PLUME_MAX_BATCH_SIZE) {
+        batch_size = PLUME_MAX_BATCH_SIZE;
+    }
+
+    /* Prepare headers for every block in the batch. */
+    for (uint32_t i = 0; i < batch_size; i++) {
+        uint8_t* blk = context->arena_buffer + ((context->rb_lft_block + i) * context->disk_info.block_size);
+        plume_prepare_block(blk, context->disk_info.block_size, context->is_first_block && (i == 0));
+    }
     context->is_first_block = 0;
 
-    uint8_t status = context->driver->write_block(
-        context->driver->driver_ptr,
-        context,
-        block,
-        context->next_valid_block
-    );
+    uint8_t* block = context->arena_buffer + (context->rb_lft_block * context->disk_info.block_size);
+    uint8_t status;
+
+    if (context->driver->write_blocks != NULL && batch_size > 1) {
+        status = context->driver->write_blocks(
+            context->driver->driver_ptr,
+            context,
+            block,
+            context->next_valid_block,
+            batch_size
+        );
+    } else {
+        /* Fall back to single-block write. */
+        batch_size = 1;
+        status = context->driver->write_block(
+            context->driver->driver_ptr,
+            context,
+            block,
+            context->next_valid_block
+        );
+    }
 
     if (plume_is_ok(status)) {
-        context->rb_pending_write = 1;
+        context->rb_pending_batch_size = (uint8_t) batch_size;
     }
 
     return status;
