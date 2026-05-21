@@ -58,6 +58,29 @@ uint8_t unix_write_block (
 
     return status;
 }
+uint8_t unix_write_blocks (
+    struct plume_unix_driver* driver_ptr,
+    struct plume_context* context,
+    const uint8_t* buffer, 
+    uint64_t block_id,
+    uint32_t count
+) {
+    ssize_t status = unix_goto_block(driver_ptr, block_id);
+    if (status != PLUME_OK) {
+        return status;
+    }
+
+    status = write(driver_ptr->fd, buffer, driver_ptr->block_size * count);
+    status = status != driver_ptr->block_size ? PLUME_EBAD_UNIX_RW : PLUME_OK;
+
+    if (status == PLUME_OK) {
+        driver_ptr->current_block += count;
+    } else {
+        driver_ptr->current_block = -1;
+    }
+
+    return status;
+}
 uint8_t unix_read_block  (
     struct plume_unix_driver* driver_ptr,
     struct plume_context* context,
@@ -111,6 +134,7 @@ int plume_allocate_unix_driver (struct plume_driver* out, const char* device) {
     out->read_block        = PLUME_READ_BLOCK_FN_TYPE        &unix_read_block;
     out->write_block       = PLUME_WRITE_BLOCK_FN_TYPE       &unix_write_block;
     out->write_block_ready = PLUME_WRITE_BLOCK_READY_FN_TYPE &unix_write_block_ready;
+    out->write_blocks      = PLUME_WRITE_BLOCKS_FN_TYPE      &unix_write_blocks;
 
     return 0;
 }

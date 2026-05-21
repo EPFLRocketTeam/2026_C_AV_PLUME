@@ -8,6 +8,7 @@ extern "C" {
     #include "plume/context.h"
     #include "plume/header.h"
     #include "plume/writer.h"
+    #include "plume/atomic.h"
     #include "plume/status.h"
     #include "plume/const.h"
 }
@@ -112,6 +113,77 @@ TEST(WriterTests, TestWriteSimpleHelloWorld) {
     EXPECT_EQ(inmem_driver->buffer[4 * block_size + 12], 0);
     EXPECT_EQ(inmem_driver->buffer[4 * block_size + 13], 0);
     EXPECT_EQ(inmem_driver->buffer[4 * block_size + 14], 0);
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    EXPECT_EQ(inmem_driver->buffer[block_size], PLUME_PAGE_FILEINFO);
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size], PLUME_PAGE_FILESTART);
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size], PLUME_PAGE_FILECONT);
+    EXPECT_EQ(*((uint32_t*) (inmem_driver->buffer + 3 * block_size + 4)), 0x11ea5699);
+    EXPECT_EQ(*((uint32_t*) (inmem_driver->buffer + 4 * block_size + 4)), 0x29d02040);
+
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 8],  'h');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 9],  'e');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 10], 'l');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 11], 'l');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 12], 'o');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 13], ',');
+    EXPECT_EQ(inmem_driver->buffer[3 * block_size + 14], ' ');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 8],  'w');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 9],  'o');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 10], 'r');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 11], 'l');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 12], 'd');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 13], ' ');
+    EXPECT_EQ(inmem_driver->buffer[4 * block_size + 14], '!');
+
+    plume_free_inmemory_driver(&driver);
+}
+TEST(WriterTests, TestWriteSimpleHelloWorldAtomic) {
+    const int block_size = 7 + sizeof(plume_header);
+    
+    struct plume_context context;
+    struct plume_driver  driver = plume_allocate_inmemory_driver(1024, block_size);
+
+    context.driver = NULL;
+
+    auto add_garbage = [&]() {
+        struct plume_snapshot snapshot = plume_save(&context);
+
+        EXPECT_EQ(plume_write(&context, (const uint8_t*) "hello, world !", 14), PLUME_OK);
+
+        plume_rollback(&context, &snapshot);
+    };
+
+    EXPECT_EQ(plume_write(NULL, (const uint8_t*) "hello, ", 7), PLUME_ENULL);
+    EXPECT_EQ(plume_write(&context, (const uint8_t*) "hello, ", 7), PLUME_ENULL);
+    EXPECT_EQ(plume_tick(NULL), PLUME_ENULL);
+    EXPECT_EQ(plume_tick(&context), PLUME_ENULL);
+
+    uint8_t arena_buffer[1024];
+    context.arena_buffer = arena_buffer;
+    context.arena_length = 1024;
+    
+    struct plume_inmemory_driver* inmem_driver = 
+        (struct plume_inmemory_driver*) driver.driver_ptr;
+    
+    plume_clear_disk(&context, &driver, 3);
+    plume_open_write(&context);
+
+    add_garbage();
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    add_garbage();
+    EXPECT_EQ(plume_write(&context, (const uint8_t*) "hello, ", 7), PLUME_OK);
+    add_garbage();
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    add_garbage();
+    EXPECT_EQ(plume_write(&context, (const uint8_t*) "world !", 7), PLUME_OK);
+    add_garbage();
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    add_garbage();
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
+    EXPECT_EQ(plume_tick (&context), PLUME_OK);
     EXPECT_EQ(plume_tick (&context), PLUME_OK);
     EXPECT_EQ(inmem_driver->buffer[block_size], PLUME_PAGE_FILEINFO);
     EXPECT_EQ(inmem_driver->buffer[3 * block_size], PLUME_PAGE_FILESTART);
