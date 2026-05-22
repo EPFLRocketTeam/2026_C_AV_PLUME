@@ -43,11 +43,21 @@ uint8_t plume_write (struct plume_context* context, const uint8_t* buffer, uint6
         return PLUME_OK_RETRY;
     }
 
-    for (size_t offset = 0; offset < size; offset ++) {
-        context->rb_number_bytes_used ++;
+    /* ── Optimised bulk copy ───────────────────────────────────────────
+     * Instead of writing one byte at a time (very slow to non-cacheable
+     * RAM_D2), copy as large a contiguous chunk as fits in the current
+     * block's remaining payload, then advance to the next block.        */
+    while (size > 0) {
+        uint32_t dst = (uint32_t)(context->rb_rgt_block * context->disk_info.block_size
+                                  + context->rb_rgt_offset);
+        uint32_t space = (uint32_t)(context->disk_info.block_size - context->rb_rgt_offset);
+        uint32_t chunk = ((uint32_t)size < space) ? (uint32_t)size : space;
 
-        context->arena_buffer[context->rb_rgt_block * context->disk_info.block_size + context->rb_rgt_offset] = buffer[offset];
-        context->rb_rgt_offset ++;
+        memcpy(context->arena_buffer + dst, buffer, chunk);
+        buffer += chunk;
+        size   -= chunk;
+        context->rb_rgt_offset        += chunk;
+        context->rb_number_bytes_used += chunk;
 
         if (context->rb_rgt_offset == context->disk_info.block_size) {
             context->rb_rgt_block ++;
