@@ -71,7 +71,7 @@ static uint8_t unix_write_blocks (
     }
 
     status = write(driver_ptr->fd, buffer, driver_ptr->block_size * count);
-    status = status != driver_ptr->block_size ? PLUME_EBAD_UNIX_RW : PLUME_OK;
+    status = status != driver_ptr->block_size * count ? PLUME_EBAD_UNIX_RW : PLUME_OK;
 
     if (status == PLUME_OK) {
         driver_ptr->current_block += count;
