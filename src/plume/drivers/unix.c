@@ -9,7 +9,7 @@
 #include "plume/status.h"
 #include "plume/drivers/unix.h"
 
-uint8_t unix_goto_block (struct plume_unix_driver* driver_ptr, uint64_t block_id) {
+static uint8_t unix_goto_block (struct plume_unix_driver* driver_ptr, uint64_t block_id) {
     if (driver_ptr->current_block == block_id) {
         return PLUME_OK;
     }
@@ -23,20 +23,20 @@ uint8_t unix_goto_block (struct plume_unix_driver* driver_ptr, uint64_t block_id
     return PLUME_OK;
 }
 
-uint8_t unix_disk_information (struct plume_unix_driver* driver_ptr, struct plume_disk* result) {
+static uint8_t unix_disk_information (struct plume_unix_driver* driver_ptr, struct plume_disk* result) {
     result->number_blocks = driver_ptr->block_count;
     result->block_size    = driver_ptr->block_size;
     
     return PLUME_OK;
 }
 
-uint8_t unix_write_block_ready (
+static uint8_t unix_write_block_ready (
     struct plume_unix_driver* driver_ptr,
     struct plume_context* context
 ) {
     return 1;
 }
-uint8_t unix_write_block (
+static uint8_t unix_write_block (
     struct plume_unix_driver* driver_ptr,
     struct plume_context* context,
     const uint8_t* buffer, 
@@ -58,7 +58,7 @@ uint8_t unix_write_block (
 
     return status;
 }
-uint8_t unix_write_blocks (
+static uint8_t unix_write_blocks (
     struct plume_unix_driver* driver_ptr,
     struct plume_context* context,
     const uint8_t* buffer, 
@@ -81,7 +81,7 @@ uint8_t unix_write_blocks (
 
     return status;
 }
-uint8_t unix_read_block  (
+static uint8_t unix_read_block  (
     struct plume_unix_driver* driver_ptr,
     struct plume_context* context,
     uint8_t* buffer, 
