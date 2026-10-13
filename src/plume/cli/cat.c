@@ -37,12 +37,12 @@ int plume_command_cat (struct plume_driver* driver, int argc, char** argv) {
 
     if (nb_files <= 0) {
         fprintf(stderr, "No files on disk.\n");
-        return 0;
+        return 1;
     }
 
     if (fileid >= nb_files) {
         fprintf(stderr, "Invalid file ID, there are only %d files.\n", nb_files);
-        return 0;
+        return 1;
     }
     
     uint64_t* file_pointers;

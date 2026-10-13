@@ -194,3 +194,28 @@ TEST(ClearDiskTests, test_plume_clear_disk_page_fails_after_last_page) {
 
     plume_free_inmemory_driver(&driver);
 }
+
+TEST(ClearDiskTests, test_plume_clear_disk_rejects_fat_outside_disk) {
+    plume_driver driver = plume_allocate_inmemory_driver(32, 64);
+    plume_inmemory_driver* inmem_driver = (plume_inmemory_driver*) driver.driver_ptr;
+
+    uint8_t arena_buffer[64];
+    struct plume_context context;
+    context.arena_buffer = arena_buffer;
+    context.arena_length = 64;
+
+    EXPECT_EQ(plume_clear_disk(&context, &driver, 0), PLUME_EOOB);
+    EXPECT_EQ(plume_clear_disk(&context, &driver, 33), PLUME_EOOB);
+    // Nothing was written: block 0 still has no settings page.
+    EXPECT_EQ(inmem_driver->buffer[0], 0);
+
+    // A disk cleared with the largest accepted FAT must be readable again.
+    EXPECT_EQ(plume_clear_disk(&context, &driver, 32), PLUME_OK);
+    struct plume_context new_context;
+    new_context.arena_buffer = arena_buffer;
+    new_context.arena_length = 64;
+    EXPECT_EQ(plume_init(&new_context, &driver), PLUME_OK);
+    EXPECT_EQ(new_context.next_valid_block, 32);
+
+    plume_free_inmemory_driver(&driver);
+}

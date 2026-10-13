@@ -4,7 +4,7 @@
 #include "plume/status.h"
 #include "plume/drivers/inmemory.h"
 
-uint8_t unix_disk_information (struct plume_inmemory_driver* driver_ptr, struct plume_disk* result) {
+static uint8_t unix_disk_information (struct plume_inmemory_driver* driver_ptr, struct plume_disk* result) {
     if (driver_ptr == NULL) {
         return PLUME_ENULL;
     }
@@ -30,7 +30,7 @@ uint8_t unix_disk_information (struct plume_inmemory_driver* driver_ptr, struct 
     return mock_status;
 }
 
-uint8_t unix_write_block_ready (
+static uint8_t unix_write_block_ready (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context
 ) {
@@ -44,7 +44,7 @@ uint8_t unix_write_block_ready (
     }
     return 1;
 }
-uint8_t unix_write_block (
+static uint8_t unix_write_block (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context,
     const uint8_t* buffer, 
@@ -80,7 +80,7 @@ uint8_t unix_write_block (
 
     return mock_status;
 }
-uint8_t inmemory_read_block  (
+static uint8_t inmemory_read_block  (
     struct plume_inmemory_driver* driver_ptr,
     struct plume_context* context,
     uint8_t* buffer, 

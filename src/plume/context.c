@@ -132,6 +132,12 @@ uint8_t plume_clear_disk (
         return PLUME_EARENA_TOO_SMALL;
     }
 
+    /* plume_init searches the FAT up to fat_size - 1: a FAT past the end of
+     * the disk would leave a settings page that no reader can open. */
+    if (fat_size == 0 || fat_size > context->disk_info.number_blocks) {
+        return PLUME_EOOB;
+    }
+
     for (uint64_t offset = 0; offset < context->disk_info.block_size; offset ++) {
         context->arena_buffer[offset] = PLUME_PAGE_EMPTY0;
     }
