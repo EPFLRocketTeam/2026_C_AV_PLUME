@@ -6,6 +6,7 @@
 #include "plume/driver.h"
 #include "plume/writer.h"
 #include "plume/header.h"
+#include "circular.h"
 
 uint8_t plume_open_write (struct plume_context* context) {
     if (context == NULL || context->driver == NULL) {
@@ -19,6 +20,9 @@ uint8_t plume_open_write (struct plume_context* context) {
     context->arena_buffer[0] = PLUME_PAGE_FILEINFO;
     
     memcpy(context->arena_buffer + 1, &context->next_valid_block, sizeof(uint64_t));
+    if (context->circular) {
+        plume_lap_write(context->arena_buffer + PLUME_FILEINFO_LAP_OFFSET, context->lap);
+    }
 
     uint8_t error = plume_write_block_blocking(context, context->arena_buffer, context->next_file_block);
     if (!plume_is_ok(error)) {
@@ -86,6 +90,14 @@ uint8_t plume_tick (struct plume_context* context) {
             context->rb_number_bytes_used -= batch * (context->disk_info.block_size - sizeof(struct plume_header));
             context->next_valid_block += batch;
 
+            /* The batch never crosses the disk end (see the clamp below), so
+             * on a circular disk the head lands exactly on it and wraps. A
+             * linear disk stops at the PLUME_EDISK_FULL check instead. */
+            if (context->circular && context->next_valid_block >= context->disk_info.number_blocks) {
+                context->next_valid_block = context->fat_size;
+                context->lap = plume_lap_next(context->lap);
+            }
+
             if (context->rb_lft_block >= context->rb_number_blocks) {
                 context->rb_lft_block -= context->rb_number_blocks;
             }
@@ -126,6 +138,9 @@ uint8_t plume_tick (struct plume_context* context) {
     for (uint32_t i = 0; i < batch_size; i++) {
         uint8_t* blk = context->arena_buffer + ((context->rb_lft_block + i) * context->disk_info.block_size);
         plume_prepare_block(blk, context->disk_info.block_size, context->is_first_block && (i == 0));
+        if (context->circular) {
+            plume_lap_write(blk + PLUME_HEADER_LAP_OFFSET, context->lap);
+        }
     }
 
     uint8_t* block = context->arena_buffer + (context->rb_lft_block * context->disk_info.block_size);
