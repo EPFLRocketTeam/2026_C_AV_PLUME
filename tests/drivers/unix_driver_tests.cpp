@@ -231,3 +231,25 @@ TEST(UnixDriverTests, unix_test_lorem_ipsum_write_failure_on_random) {
     
     plume_free_unix_driver(&driver);
 }
+TEST(UnixDriverTests, unix_test_write_blocks_multiblock) {
+    if (getenv("EMPTY_512_16") == NULL) {
+        GTEST_SKIP() << "needs the EMPTY_512_16 loop device from tests/run_tests.sh";
+    }
+
+    struct plume_driver driver;
+    EXPECT_EQ(plume_allocate_unix_driver(&driver, getenv("EMPTY_512_16")), PLUME_OK);
+    ASSERT_NE(driver.write_blocks, nullptr);
+
+    EXPECT_EQ(driver.write_blocks(driver.driver_ptr, NULL, (const uint8_t*) lorem_ipsum_content, 2, 4), PLUME_OK);
+    EXPECT_EQ(driver.write_blocks(driver.driver_ptr, NULL, (const uint8_t*) lorem_ipsum_content, 6, 1), PLUME_OK);
+
+    uint8_t buffer[512];
+    for (int block = 0; block < 4; block ++) {
+        EXPECT_EQ(driver.read_block(driver.driver_ptr, NULL, buffer, 2 + block), PLUME_OK);
+        EXPECT_EQ(memcmp(buffer, lorem_ipsum_content + 512 * block, 512), 0) << "block " << block;
+    }
+    EXPECT_EQ(driver.read_block(driver.driver_ptr, NULL, buffer, 6), PLUME_OK);
+    EXPECT_EQ(memcmp(buffer, lorem_ipsum_content, 512), 0);
+
+    plume_free_unix_driver(&driver);
+}
