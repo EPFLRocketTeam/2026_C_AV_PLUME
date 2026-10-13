@@ -5,6 +5,7 @@
 #include "plume/header.h"
 #include "plume/context.h"
 #include "plume/status.h"
+#include "../circular.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -56,18 +57,43 @@ int plume_command_cat (struct plume_driver* driver, int argc, char** argv) {
     uint64_t start = file_pointers[fileid];
     uint64_t end = file_pointers[fileid + 1];
 
-    for (uint64_t idx = start; idx < end; idx ++) {
-        uint8_t status = context.driver->read_block(context.driver->driver_ptr, &context, context.arena_buffer, idx);
+    /* On a circular disk only the last data_blocks virtual blocks before the
+     * head are still on disk: print what survives of the file. */
+    uint64_t data_blocks = context.disk_info.number_blocks - context.fat_size;
+    uint64_t from = start;
+    uint64_t skipped = 0;
+    if (context.circular) {
+        uint64_t head   = file_pointers[nb_files];
+        uint64_t oldest = head > context.fat_size + data_blocks ? head - data_blocks : context.fat_size;
+        if (from < oldest) {
+            from = oldest < end ? oldest : end;
+        }
+    }
+
+    for (uint64_t idx = from; idx < end; idx ++) {
+        uint64_t block = idx;
+        uint32_t lap   = 1;
+        if (context.circular) {
+            block = context.fat_size + (idx - context.fat_size) % data_blocks;
+            lap   = (uint32_t) (((idx - context.fat_size) / data_blocks + 1) & PLUME_LAP_MASK);
+        }
+
+        uint8_t status = context.driver->read_block(context.driver->driver_ptr, &context, context.arena_buffer, block);
         if (!plume_is_ok(status)) {
             free(file_pointers);
-            fprintf(stderr, "ERROR: Could not read block %lu.\n", idx);
+            fprintf(stderr, "ERROR: Could not read block %lu.\n", block);
             return status;
+        }
+
+        if (context.circular && plume_lap_read(context.arena_buffer + PLUME_HEADER_LAP_OFFSET) != lap) {
+            skipped ++;
+            continue;
         }
 
         status = plume_verify_block(context.arena_buffer, context.disk_info.block_size, idx == start);
         if (status != PLUME_OK) {
             free(file_pointers);
-            fprintf(stderr, "ERROR: Could not validate block %lu.\n", idx);
+            fprintf(stderr, "ERROR: Could not validate block %lu.\n", block);
             return status;
         }
 
@@ -80,5 +106,17 @@ int plume_command_cat (struct plume_driver* driver, int argc, char** argv) {
 
     free(file_pointers);
 
-    return 0;
+    if (from >= end && end > start) {
+        fprintf(stderr, "WARNING: all %lu blocks of file %d were overwritten.\n", end - start, fileid);
+    } else if (from > start) {
+        fprintf(stderr,
+            "WARNING: the first %lu of the %lu blocks of file %d were overwritten; printed the last %lu, starting at block %lu of the disk.\n",
+            from - start, end - start, fileid, end - from,
+            context.fat_size + (from - context.fat_size) % data_blocks);
+    }
+    if (skipped > 0) {
+        fprintf(stderr, "WARNING: skipped %lu blocks of file %d that belong to a later lap.\n", skipped, fileid);
+    }
+
+    return (from > start || skipped > 0) ? 1 : 0;
 }

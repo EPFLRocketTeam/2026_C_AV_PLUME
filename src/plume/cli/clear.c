@@ -6,6 +6,7 @@
 #include "plume/context.h"
 #include "plume/status.h"
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -21,14 +22,21 @@ int plume_command_clear (struct plume_driver* driver, int argc, char** argv) {
         return 1;
     }
 
-    printf("Clearing disk with fat size %d...\n", fatsize);
+    int circular = argc >= 2 && !strcmp(argv[1], "circular");
+    if (argc >= 2 && !circular) {
+        help("ERROR: The only option after <fatsize> is circular.");
+        return 1;
+    }
+
+    printf(circular ? "Clearing disk with fat size %d, circular...\n" : "Clearing disk with fat size %d...\n", fatsize);
 
     struct plume_context context;
     context.arena_buffer = plume_cli_arena_buffer;
     context.arena_length = PLUME_CLI_ARENA_LENGTH;
     
     uint8_t status;
-    status = plume_clear_disk(&context, driver, fatsize);
+    status = circular ? plume_clear_disk_circular(&context, driver, fatsize)
+                      : plume_clear_disk(&context, driver, fatsize);
     if (status != PLUME_OK) {
         printf("ERROR: Could not clear disk, device is likely invalid.\n");
         return status;

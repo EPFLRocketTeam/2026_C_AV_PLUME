@@ -39,10 +39,27 @@ int plume_command_ls (struct plume_driver* driver, int argc, char** argv) {
         return status;
     }
     
+    /* On a circular disk, blocks older than one data area before the head
+     * were overwritten: SIZE counts the blocks that survive. */
+    uint64_t oldest = 0;
+    if (context.circular) {
+        uint64_t data_blocks = context.disk_info.number_blocks - context.fat_size;
+        uint64_t head        = file_pointers[nb_files];
+        oldest = head > context.fat_size + data_blocks ? head - data_blocks : context.fat_size;
+    }
+
     printf(    "INDEX   SIZE\n");
     for (int file_id = 0; file_id < nb_files; file_id ++) {
+        uint64_t start = file_pointers[file_id];
+        uint64_t end   = file_pointers[file_id + 1];
+
         printf("%-5d", file_id);
-        printf(     "   %lu\n", file_pointers[file_id + 1] - file_pointers[file_id]);
+        if (start < oldest) {
+            uint64_t from = oldest < end ? oldest : end;
+            printf(     "   %lu (first %lu blocks overwritten)\n", end - from, from - start);
+        } else {
+            printf(     "   %lu\n", end - start);
+        }
     }
 
     free(file_pointers);
